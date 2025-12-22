@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "737359941676",
+    "project_id": "ietp-agrinest",
+    "storage_bucket": "ietp-agrinest.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:737359941676:android:d3b497539c7e8f63570189",
+        "android_client_info": {
+          "package_name": "com.agrinest.farm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxeDer0yIUdK7TUYH8y720yXbMUWW4TJw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
