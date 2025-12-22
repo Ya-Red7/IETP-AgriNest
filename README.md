@@ -2,7 +2,7 @@
 
 [![GitHub repo](https://img.shields.io/badge/GitHub-Ya--Red7/IETP--AgriNest-blue)](https://github.com/Ya-Red7/IETP-AgriNest)
 
-AgriNest is a comprehensive mobile application designed to revolutionize farming practices in Ethiopia through smart technology integration. This project is developed as part of the IETP (Information Engineering Technology Program) curriculum.
+AgriNest is a comprehensive mobile application designed to revolutionize farming practices in Ethiopia through smart technology integration. This project is developed as part of the IETP (Integrated Engineering Team Project) curriculum.
 
 The app provides farmers with real-time monitoring, analytics, and insights to optimize crop yields and resource management.
 
@@ -96,7 +96,7 @@ lib/
 
 ## Project Context
 
-This project is developed as part of the Integrated Engineering Team Program (IETP) coursework. AgriNest demonstrates the integration of modern mobile development technologies with agricultural technology to address real-world problems in Ethiopian farming.
+This project is developed as part of the Integrated Engineering Team Project (IETP) coursework. AgriNest demonstrates the integration of modern mobile development technologies with agricultural technology to address real-world problems in Ethiopian farming.
 
 ### Academic Objectives
 - Demonstrate proficiency in Flutter mobile development
@@ -114,7 +114,7 @@ Contributions are welcome! This is an educational project, so feel free to:
 ## Acknowledgments
 
 - **Institution**: Addis Ababa Science and Technology University (AASTU)
-- **Program**: Integrated Engineering Team Program (IETP)
+- **Program**: Integrated Engineering Team Project (IETP)
 - **Group**: Group 81
 - **Year**: 2025
 
