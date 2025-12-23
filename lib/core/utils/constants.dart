@@ -28,6 +28,7 @@ class AppConstants {
   static const String loginEndpoint = '/auth/login';
   static const String signupEndpoint = '/auth/signup';
   static const String sensorDataEndpoint = '/sensors/data';
+  static const String pumpActivateEndpoint = '/pump/activate';
   
   // Sensor Types
   static const String soilMoisture = 'soil_moisture';

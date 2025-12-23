@@ -7,6 +7,7 @@ import '../../core/utils/constants.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../services/auth_service.dart';
+import '../../services/csv_export_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -18,9 +19,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen>
     with TickerProviderStateMixin {
   late AnimationController _switchController;
-  bool _soilMoistureAlerts = true;
-  bool _temperatureWarnings = true;
-  bool _dailyReports = false;
+  final CsvExportService _csvExportService = CsvExportService();
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -120,9 +120,9 @@ class _SettingsScreenState extends State<SettingsScreen>
               top: 100,
               left: 0,
               right: 0,
-              bottom: 0,
+              bottom: 80,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.only(top: 20, bottom: 24),
                 child: Column(
                   children: [
                     // Dark/Light mode toggle
@@ -133,60 +133,71 @@ class _SettingsScreenState extends State<SettingsScreen>
                           Consumer(
                             builder: (context, ref, child) {
                               final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
-                              return Icon(
-                                isDark ? Icons.dark_mode : Icons.light_mode,
-                                color: AppStyles.textPrimary(context),
-                                size: 24,
+                              return Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryGreen.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  isDark ? Icons.dark_mode : Icons.light_mode,
+                                  color: AppColors.primaryGreen,
+                                  size: 24,
+                                ),
                               );
                             },
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Consumer(
-                                  builder: (context, ref, child) {
-                                    final isAmharic = ref.watch(languageProvider).languageCode == 'am';
-                                    return Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          isAmharic ? 'ጨለማ ሁነታ' : 'Dark Mode',
-                                          style: TextStyle(
-                                            color: AppStyles.textPrimary(context),
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                              ],
+                            child: Consumer(
+                              builder: (context, ref, child) {
+                                final isAmharic = ref.watch(languageProvider).languageCode == 'am';
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isAmharic ? 'ጨለማ ሁነታ' : 'Dark Mode',
+                                      style: TextStyle(
+                                        color: AppStyles.textPrimary(context),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      isAmharic ? 'ጨለማ ወይም ብርሃን ሁነታ' : 'Switch between dark and light mode',
+                                      style: TextStyle(
+                                        color: AppStyles.textSecondary(context),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
+                          const SizedBox(width: 12),
                           Consumer(
                             builder: (context, ref, child) {
                               final themeMode = ref.watch(themeModeProvider);
                               final isDark = themeMode == ThemeMode.dark;
 
-                              return InkWell(
+                              return GestureDetector(
                                 onTap: () {
                                   ref.read(themeModeProvider.notifier).toggleTheme();
                                 },
-                                borderRadius: BorderRadius.circular(14),
                                 child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 300),
+                                  duration: const Duration(milliseconds: 200),
                                   curve: Curves.easeInOut,
-                                  width: 56,
+                                  width: 52,
                                   height: 28,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(14),
-                                    color: isDark ? AppColors.primaryGreen : Colors.grey[600],
+                                    color: isDark ? AppColors.primaryGreen : Colors.grey[400],
                                   ),
                                   child: AnimatedAlign(
-                                    duration: const Duration(milliseconds: 300),
+                                    duration: const Duration(milliseconds: 200),
                                     curve: Curves.easeInOut,
                                     alignment: isDark ? Alignment.centerRight : Alignment.centerLeft,
                                     child: Container(
@@ -212,38 +223,69 @@ class _SettingsScreenState extends State<SettingsScreen>
                       isDark: isDark,
                       child: Row(
                         children: [
-                          Text(
-                            'Language',
-                            style: TextStyle(
-                              color: AppStyles.textPrimary(context),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryGreen.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.language,
+                              color: AppColors.primaryGreen,
+                              size: 24,
                             ),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Language',
+                                  style: TextStyle(
+                                    color: AppStyles.textPrimary(context),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Consumer(
+                                  builder: (context, ref, child) {
+                                    final isAmharic = ref.watch(languageProvider).languageCode == 'am';
+                                    return Text(
+                                      isAmharic ? 'ቋንቋ ይምረጡ' : 'Choose your preferred language',
+                                      style: TextStyle(
+                                        color: AppStyles.textSecondary(context),
+                                        fontSize: 12,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
                           Consumer(
                             builder: (context, ref, child) {
                               final isAmharic = ref.watch(languageProvider).languageCode == 'am';
 
-                              return Material(
-                                color: isAmharic
-                                    ? AppColors.primaryGreenDark
-                                    : AppColors.primaryGreen,
-                                borderRadius: BorderRadius.circular(8),
-                                child: InkWell(
-                                  onTap: () {
-                                    ref.read(languageProvider.notifier).toggleLanguage();
-                                  },
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    child: Text(
-                                      isAmharic ? 'አማርኛ' : 'English',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                              return GestureDetector(
+                                onTap: () {
+                                  ref.read(languageProvider.notifier).toggleLanguage();
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryGreen,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    isAmharic ? 'አማርኛ' : 'English',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
@@ -258,103 +300,73 @@ class _SettingsScreenState extends State<SettingsScreen>
                     Container(
                       width: double.infinity,
                       margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Consumer(
                         builder: (context, ref, child) {
                           final isAmharic = ref.watch(languageProvider).languageCode == 'am';
-                          final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
 
                           return ElevatedButton(
-                            onPressed: () {
-                              // TODO: Implement CSV export
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: const Text('CSV export functionality coming soon!'),
-                                  backgroundColor: AppColors.primaryGreen,
-                                ),
-                              );
-                            },
+                            onPressed: _isExporting
+                                ? null
+                                : () => _exportCsvData(context, ref),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primaryGreen,
+                              disabledBackgroundColor: AppColors.primaryGreen.withOpacity(0.6),
                               foregroundColor: Colors.white,
                               elevation: 0,
-                              padding: const EdgeInsets.all(20),
+                              padding: const EdgeInsets.symmetric(vertical: 18),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.download,
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Flexible(
-                                  child: Text(
-                                    isAmharic ? 'መረጃ ወደ CSV ላክ' : 'Export Data as CSV',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
+                            child: _isExporting
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        isAmharic ? 'በማውጣት ላይ...' : 'Exporting...',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.download,
+                                        size: 22,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Flexible(
+                                        child: Text(
+                                          isAmharic
+                                              ? '30 ቀናት መረጃ ወደ CSV ላክ'
+                                              : 'Export 30 days Data as CSV',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                              ],
-                            ),
                           );
                         },
-                      ),
-                    ),
-
-                    // Notifications
-                    _buildSettingCard(
-                      isDark: isDark,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Consumer(
-                            builder: (context, ref, child) {
-                              final isAmharic = ref.watch(languageProvider).languageCode == 'am';
-                              return Text(
-                                isAmharic ? 'ማሳወቂያዎች' : 'Notifications',
-                                style: TextStyle(
-                                  color: AppStyles.textPrimary(context),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          Consumer(
-                            builder: (context, ref, child) {
-                              final isAmharic = ref.watch(languageProvider).languageCode == 'am';
-                              return Column(
-                                children: [
-                                  _buildNotificationToggle(
-                                    isAmharic ? 'ያሉበት አፈር እርጥበት ማሳወቂያ' : 'Low soil moisture alerts',
-                                    '',
-                                    _soilMoistureAlerts,
-                                    (value) => setState(() => _soilMoistureAlerts = value),
-                                  ),
-                                  _buildNotificationToggle(
-                                    isAmharic ? 'የሙቀት ማስጠንቀቂያ' : 'Temperature warnings',
-                                    '',
-                                    _temperatureWarnings,
-                                    (value) => setState(() => _temperatureWarnings = value),
-                                  ),
-                                  _buildNotificationToggle(
-                                    isAmharic ? 'ዕለታዊ ሪፖርት' : 'Daily reports',
-                                    '',
-                                    _dailyReports,
-                                    (value) => setState(() => _dailyReports = value),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
                       ),
                     ),
 
@@ -363,47 +375,67 @@ class _SettingsScreenState extends State<SettingsScreen>
                     // Profile section
                     _buildSettingCard(
                       isDark: isDark,
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryGreen,
-                              borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        onTap: () {
+                          context.go(AppConstants.editProfileRoute);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryGreen.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.person,
+                                color: AppColors.primaryGreen,
+                                size: 24,
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Consumer(
-                              builder: (context, ref, child) {
-                                final isAmharic = ref.watch(languageProvider).languageCode == 'am';
-                                return Text(
-                                  isAmharic ? 'መለያ አርትዕ' : 'Edit Profile',
-                                  style: TextStyle(
-                                    color: AppStyles.textPrimary(context),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Consumer(
+                                    builder: (context, ref, child) {
+                                      final isAmharic = ref.watch(languageProvider).languageCode == 'am';
+                                      return Text(
+                                        isAmharic ? 'መለያ አርትዕ' : 'Edit Profile',
+                                        style: TextStyle(
+                                          color: AppStyles.textPrimary(context),
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      );
+                                    },
                                   ),
-                                );
-                              },
+                                  const SizedBox(height: 4),
+                                  Consumer(
+                                    builder: (context, ref, child) {
+                                      final isAmharic = ref.watch(languageProvider).languageCode == 'am';
+                                      return Text(
+                                        isAmharic ? 'የግል መረጃዎን ይለውጡ' : 'Update your personal information',
+                                        style: TextStyle(
+                                          color: AppStyles.textSecondary(context),
+                                          fontSize: 12,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          IconButton(
-                            onPressed: () {
-                              context.go(AppConstants.editProfileRoute);
-                            },
-                            icon: Icon(
+                            Icon(
                               Icons.arrow_forward_ios,
                               color: AppStyles.textSecondary(context),
                               size: 16,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
 
@@ -415,31 +447,50 @@ class _SettingsScreenState extends State<SettingsScreen>
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(12),
+                            width: 48,
+                            height: 48,
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
+                              color: AppColors.error.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
                               Icons.logout,
-                              color: Colors.red,
+                              color: AppColors.error,
                               size: 24,
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: Consumer(
-                              builder: (context, ref, child) {
-                                final isAmharic = ref.watch(languageProvider).languageCode == 'am';
-                                return Text(
-                                  isAmharic ? 'ውጣ' : 'Logout',
-                                  style: TextStyle(
-                                    color: AppStyles.textPrimary(context),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                );
-                              },
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Consumer(
+                                  builder: (context, ref, child) {
+                                    final isAmharic = ref.watch(languageProvider).languageCode == 'am';
+                                    return Text(
+                                      isAmharic ? 'ውጣ' : 'Logout',
+                                      style: TextStyle(
+                                        color: AppStyles.textPrimary(context),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 4),
+                                Consumer(
+                                  builder: (context, ref, child) {
+                                    final isAmharic = ref.watch(languageProvider).languageCode == 'am';
+                                    return Text(
+                                      isAmharic ? 'ከመለያዎ ይውጡ' : 'Sign out from your account',
+                                      style: TextStyle(
+                                        color: AppStyles.textSecondary(context),
+                                        fontSize: 12,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                           ),
                           TextButton(
@@ -531,14 +582,15 @@ class _SettingsScreenState extends State<SettingsScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(12),
+                            width: 48,
+                            height: 48,
                             decoration: BoxDecoration(
-                              color: AppColors.primaryGreen,
+                              color: AppColors.primaryGreen.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.info,
-                              color: Colors.white,
+                              color: AppColors.primaryGreen,
                               size: 24,
                             ),
                           ),
@@ -558,14 +610,14 @@ class _SettingsScreenState extends State<SettingsScreen>
                                           style: TextStyle(
                                             color: AppStyles.textPrimary(context),
                                             fontSize: 16,
-                                            fontWeight: FontWeight.w500,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
-                                        const SizedBox(height: 4),
+                                        const SizedBox(height: 6),
                                         Text(
                                           isAmharic ? 'ለኢትዮጵያ ያለ ብልህ አይኦቲ እርሻ መፍትሄ' : 'Smart IoT farming solution for Ethiopia',
                                           style: TextStyle(
-                                            color: AppColors.textSecondary,
+                                            color: AppStyles.textSecondary(context),
                                             fontSize: 12,
                                           ),
                                         ),
@@ -574,34 +626,20 @@ class _SettingsScreenState extends State<SettingsScreen>
                                   },
                                 ),
                                 const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'AASTU',
-                                      style: TextStyle(
-                                        color: AppStyles.textPrimary(context),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
                                 Text(
-                                  'Group 81 – 2025',
+                                  'AASTU • Group 81 – 2025',
                                   style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12,
+                                    color: AppStyles.textSecondary(context),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 6),
                                 Text(
                                   'Version ${AppConstants.version}',
                                   style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 10,
+                                    color: AppStyles.textMuted(context),
+                                    fontSize: 12,
                                   ),
                                 ),
                               ],
@@ -611,9 +649,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       ),
                     ),
 
-                    const SizedBox(height: 16),
-
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -690,19 +726,25 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Widget _buildSettingCard({required Widget child, required bool isDark}) {
     return Container(
+      width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard.withOpacity(0.5) : AppColors.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.borderColor,
-          width: 1,
+        color: AppStyles.card(context),
+        border: Border(
+          top: BorderSide(
+            color: AppStyles.border(context).withOpacity(0.2),
+            width: 1,
+          ),
+          bottom: BorderSide(
+            color: AppStyles.border(context).withOpacity(0.2),
+            width: 1,
+          ),
         ),
-        boxShadow: isDark ? null : [
+        boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
@@ -711,33 +753,73 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  Widget _buildNotificationToggle(
-    String label,
-    String subtitle,
-    bool value,
-    ValueChanged<bool> onChanged,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14,
-              ),
+  Future<void> _exportCsvData(BuildContext context, WidgetRef ref) async {
+    final isAmharic = ref.read(languageProvider).languageCode == 'am';
+
+    setState(() {
+      _isExporting = true;
+    });
+
+    try {
+      await _csvExportService.export30DaysData();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Text(
+                  isAmharic
+                      ? '30 ቀናት መረጃ በተሳካ ሁኔታ ተወጣ!'
+                      : '30 days data exported successfully!',
+                ),
+              ],
             ),
+            backgroundColor: AppColors.primaryGreen,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 3),
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeColor: AppColors.primaryGreen,
-            activeTrackColor: AppColors.primaryGreen.withOpacity(0.3),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    isAmharic
+                        ? 'ስህተት: ${e.toString()}'
+                        : 'Error: ${e.toString()}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 4),
           ),
-        ],
-      ),
-    );
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+        });
+      }
+    }
   }
 }

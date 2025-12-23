@@ -32,6 +32,11 @@ class AppColors {
   static const Color battery = Color(0xFF4CAF50);
   static const Color waterUsed = Color(0xFF9C27B0);
 
+  // Status Colors
+  static const Color error = Color(0xFFF44336);
+  static const Color success = Color(0xFF4CAF50);
+  static const Color warning = Color(0xFFFF9800);
+
   // Border and Glass Effects
   static const Color lightBorder = Color(0xFFE0E0E0);
   static const Color darkBorder = Color(0xFF404040);

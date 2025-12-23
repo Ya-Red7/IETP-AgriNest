@@ -79,38 +79,45 @@ class _CircularGaugeState extends State<CircularGauge>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppStyles.cardDecoration(context),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: AppStyles.cardDecoration(context),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
           // Label
           Text(
             widget.label,
-            style: AppStyles.legendText(context),
+            style: AppStyles.legendText(context).copyWith(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // Circular progress indicator
           SizedBox(
-            width: 112,
-            height: 112,
+            width: 90,
+            height: 90,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 // Background circle
                 Container(
-                  width: 112,
-                  height: 112,
+                  width: 90,
+                  height: 90,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.transparent,
                   ),
                   child: CircularProgressIndicator(
                     value: 1.0,
-                    strokeWidth: 8,
+                    strokeWidth: 6,
                     backgroundColor: Colors.white.withOpacity(0.1),
                     valueColor: AlwaysStoppedAnimation<Color>(
                       Colors.transparent,
@@ -123,15 +130,15 @@ class _CircularGaugeState extends State<CircularGauge>
                   animation: _animation,
                   builder: (context, child) {
                     return Container(
-                      width: 112,
-                      height: 112,
+                      width: 90,
+                      height: 90,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.transparent,
                       ),
                       child: CircularProgressIndicator(
                         value: _animation.value,
-                        strokeWidth: 8,
+                        strokeWidth: 6,
                         backgroundColor: Colors.transparent,
                         valueColor: AlwaysStoppedAnimation<Color>(widget.color),
                       ),
@@ -146,7 +153,7 @@ class _CircularGaugeState extends State<CircularGauge>
                     Icon(
                       widget.icon,
                       color: widget.color,
-                      size: 24,
+                      size: 20,
                     ),
                     const SizedBox(height: 4),
                     RichText(
@@ -158,7 +165,7 @@ class _CircularGaugeState extends State<CircularGauge>
                             ),
                             style: TextStyle(
                               color: AppStyles.textPrimary(context),
-                              fontSize: 20,
+                              fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -166,7 +173,7 @@ class _CircularGaugeState extends State<CircularGauge>
                             text: ' ${widget.unit}',
                             style: TextStyle(
                               color: AppStyles.textMuted(context),
-                              fontSize: 12,
+                              fontSize: 10,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -179,6 +186,7 @@ class _CircularGaugeState extends State<CircularGauge>
             ),
           ),
         ],
+      ),
       ),
     );
   }
