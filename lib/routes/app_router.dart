@@ -10,7 +10,7 @@ import '../widgets/auth_wrapper.dart';
 import '../core/utils/constants.dart';
 
 final appRouter = GoRouter(
-  initialLocation: AppConstants.authRoute,
+  initialLocation: AppConstants.splashRoute,
   routes: [
     GoRoute(
       path: AppConstants.authRoute,

@@ -40,9 +40,9 @@ android {
             // Set environment variables or use local.properties file for security
 
             storeFile = file("keystore.jks")
-            storePassword = System.getenv("AGRI_KEYSTORE_PASSWORD") ?: "default_password"
+            storePassword = System.getenv("AGRI_KEYSTORE_PASSWORD") ?: "agrinest123"
             keyAlias = System.getenv("AGRI_KEY_ALIAS") ?: "agrinest"
-            keyPassword = System.getenv("AGRI_KEY_PASSWORD") ?: "default_password"
+            keyPassword = System.getenv("AGRI_KEY_PASSWORD") ?: "agrinest123"
         }
     }
 
@@ -55,11 +55,24 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            
+            // Strip debug symbols for smaller APK
+            ndk {
+                debugSymbolLevel = "NONE"
+            }
         }
 
         debug {
             // Debug signing configuration (automatically configured by Flutter)
             signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a")
+            isUniversalApk = false
         }
     }
 }

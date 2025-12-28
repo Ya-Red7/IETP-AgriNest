@@ -38,3 +38,25 @@
 
 # Keep data classes
 -keep class com.agrinest.farm.** { *; }
+
+# Suppress warnings for Google Play Core classes (not used but referenced by Flutter)
+-dontwarn com.google.android.play.core.splitcompat.SplitCompatApplication
+-dontwarn com.google.android.play.core.splitinstall.**
+-dontwarn com.google.android.play.core.tasks.**
+
+# Aggressive code shrinking for smaller APK size
+-optimizationpasses 5
+-dontusemixedcaseclassnames
+-dontskipnonpubliclibraryclasses
+-verbose
+
+# Remove logging in release builds
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+}
+
+# Remove debug information
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

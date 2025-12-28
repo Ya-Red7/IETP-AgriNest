@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'text_styles.dart';
 
@@ -102,8 +101,8 @@ class AppTheme {
       labelSmall: AppTextStyles.bodySmall.copyWith(color: AppColors.darkTextPrimary),
     ),
 
-    // Font Family
-    fontFamily: GoogleFonts.inter().fontFamily,
+    // Font Family - Using system default for smaller APK size
+    // fontFamily: null, // Uses system default
   );
 
   // Light Theme (Optional - can be added later)

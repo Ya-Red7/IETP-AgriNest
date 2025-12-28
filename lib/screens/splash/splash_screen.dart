@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/constants.dart';
 import '../../providers/language_provider.dart';
@@ -20,6 +21,7 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _rotateAnimation;
   late Animation<double> _glowAnimation;
+  bool _hasNavigated = false;
 
   @override
   void initState() {
@@ -61,12 +63,29 @@ class _SplashScreenState extends State<SplashScreen>
       _glowController.forward();
     });
 
-    // Navigate to home after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
+    // Check auth state and navigate after minimum splash duration
+    _checkAuthAndNavigate();
+  }
+
+  Future<void> _checkAuthAndNavigate() async {
+    // Wait for minimum splash screen duration (3 seconds)
+    await Future.delayed(const Duration(seconds: 3));
+
+    if (!mounted || _hasNavigated) return;
+
+    // Check current auth state
+    final user = FirebaseAuth.instance.currentUser;
+    
+    if (mounted && !_hasNavigated) {
+      _hasNavigated = true;
+      if (user != null) {
+        // User is logged in, navigate to home
         context.go(AppConstants.homeRoute);
+      } else {
+        // User is not logged in, navigate to login
+        context.go(AppConstants.loginRoute);
       }
-    });
+    }
   }
 
   @override

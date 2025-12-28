@@ -8,6 +8,7 @@ import '../../providers/theme_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/csv_export_service.dart';
+import '../../services/thingspeak_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -19,12 +20,14 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen>
     with TickerProviderStateMixin {
   late AnimationController _switchController;
-  final CsvExportService _csvExportService = CsvExportService();
+  late final CsvExportService _csvExportService;
   bool _isExporting = false;
 
   @override
   void initState() {
     super.initState();
+    final thingSpeakService = ThingSpeakService();
+    _csvExportService = CsvExportService(thingSpeakService);
     _switchController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -80,11 +83,11 @@ class _SettingsScreenState extends State<SettingsScreen>
 
             // Header
             Positioned(
-              top: 4,
+              top: 16,
               left: 0,
               right: 0,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSurface.withOpacity(0.8) : AppColors.surface.withOpacity(0.8),
                   border: Border(
@@ -761,6 +764,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     });
 
     try {
+      // Export data (handles sharing/download automatically)
       await _csvExportService.export30DaysData();
 
       if (mounted) {

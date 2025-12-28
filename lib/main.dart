@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
@@ -10,8 +11,23 @@ import 'providers/theme_provider.dart';
 import 'providers/language_provider.dart';
 import 'routes/app_router.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Load environment variables - MANDATORY step
+  try {
+    await dotenv.load(fileName: "assets/.env");
+  } catch (e) {
+    // If .env file is missing, throw a clear error
+    throw Exception(
+      'CRITICAL: .env file not found!\n'
+      'Please create a .env file in the assets/ directory with:\n'
+      'CHANNEL_ID=your_channel_id\n'
+      'READ_API_KEY=your_read_api_key\n'
+      '\nError details: $e'
+    );
+  }
+  
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

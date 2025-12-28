@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:ui' as ui;
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_styles.dart';
 import '../../core/utils/constants.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/sensor_data_provider.dart';
+import '../../providers/chart_data_provider.dart';
+import '../../models/chart_data.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -18,59 +23,6 @@ class AnalyticsScreen extends StatefulWidget {
 class _AnalyticsScreenState extends State<AnalyticsScreen>
     with TickerProviderStateMixin {
   String _selectedPeriod = '7days';
-
-  // Generate mock data based on selected period
-  List<Map<String, dynamic>> get _mockData {
-    return _generateMockData(_selectedPeriod);
-  }
-
-  List<Map<String, dynamic>> _generateMockData(String period) {
-    final now = DateTime.now();
-    List<Map<String, dynamic>> data = [];
-
-    switch (period) {
-      case '24h':
-        // Generate data for last 24 hours (hourly data)
-        for (int i = 23; i >= 0; i--) {
-          final dateTime = now.subtract(Duration(hours: i));
-          data.add({
-            'time': '${dateTime.hour}:00',
-            'moisture': 60.0 + (i % 10) + (i * 0.5).clamp(0, 15),
-            'temp': 22.0 + (i % 8) + (i * 0.2).clamp(0, 8),
-          });
-        }
-        break;
-
-      case '7days':
-        // Generate data for last 7 days (daily data)
-        final days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        for (int i = 6; i >= 0; i--) {
-          final date = now.subtract(Duration(days: i));
-          data.add({
-            'day': days[date.weekday - 1],
-            'moisture': 60.0 + (i % 12) + (i * 0.8).clamp(0, 10),
-            'temp': 23.0 + (i % 6) + (i * 0.3).clamp(0, 5),
-          });
-        }
-        break;
-
-      case '30days':
-        // Generate data for last 30 days (daily data, showing every 3rd day for readability)
-        for (int i = 29; i >= 0; i -= 3) {
-          final date = now.subtract(Duration(days: i));
-          data.add({
-            'day': '${date.month}/${date.day}',
-            'moisture': 55.0 + ((29 - i) % 15) + ((29 - i) * 0.2).clamp(0, 8),
-            'temp': 20.0 + ((29 - i) % 10) + ((29 - i) * 0.1).clamp(0, 6),
-          });
-        }
-        // Reverse to show chronological order
-        data = data.reversed.toList();
-        break;
-    }
-
-    return data;
-  }
 
   void _onNavItemTapped(int index) {
     switch (index) {
@@ -115,25 +67,60 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
             // Header
             Positioned(
-              top: 4,
+              top: 16,
               left: 0,
               right: 0,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 decoration: AppStyles.headerDecoration(context),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Consumer(
-                      builder: (context, ref, child) {
-                        final isAmharic = ref.watch(languageProvider).languageCode == 'am';
-                        return Text(
-                          isAmharic ? 'የውሂብ ትንተና' : 'Analytics',
-                          style: AppStyles.headerTitle(context, isAmharic),
-                        );
-                      },
-                    ),
-                  ],
+                child: Consumer(
+                  builder: (context, ref, child) {
+                    final isAmharic = ref.watch(languageProvider).languageCode == 'am';
+                    final sensorDataAsync = ref.watch(sensorDataProvider);
+                    final isRefreshing = sensorDataAsync.isLoading;
+                    
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            isAmharic ? 'የውሂብ ትንተና' : 'Analytics',
+                            style: AppStyles.headerTitle(context, isAmharic),
+                          ),
+                        ),
+                        // Refresh button
+                        IconButton(
+                          onPressed: isRefreshing
+                              ? null
+                              : () {
+                                  // Refresh all chart data providers
+                                  ref.invalidate(chartData24hProvider);
+                                  ref.invalidate(chartData7dProvider);
+                                  ref.invalidate(chartData30dProvider);
+                                  ref.refresh(sensorDataProvider);
+                                },
+                          icon: isRefreshing
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      AppColors.primaryGreen,
+                                    ),
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.refresh,
+                                  color: AppColors.primaryGreen,
+                                  size: 24,
+                                ),
+                          tooltip: isAmharic ? 'አድስ' : 'Refresh',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -164,184 +151,247 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               left: 0,
               right: 0,
               bottom: 0,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    // Chart
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: AppStyles.cardDecoration(context),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: 200,
-                            child: LineChart(
-                              LineChartData(
-                                gridData: FlGridData(
-                                  show: true,
-                                  drawVerticalLine: true,
-                                  getDrawingHorizontalLine: (value) {
-                                    return AppStyles.chartGridLine(context);
-                                  },
-                                  getDrawingVerticalLine: (value) {
-                                    return AppStyles.chartGridLine(context);
-                                  },
-                                ),
-                                titlesData: FlTitlesData(
-                                  show: true,
-                                  rightTitles: AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
+              child: Consumer(
+                builder: (context, ref, child) {
+                  // Get the appropriate provider based on selected period
+                  final chartDataAsync = _selectedPeriod == '24h'
+                      ? ref.watch(chartData24hProvider)
+                      : _selectedPeriod == '7days'
+                          ? ref.watch(chartData7dProvider)
+                          : ref.watch(chartData30dProvider);
+
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        // Chart
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: AppStyles.cardDecoration(context),
+                          child: chartDataAsync.when(
+                            data: (chartData) {
+                              if (chartData.isEmpty) {
+                                return Padding(
+                                  padding: const EdgeInsets.all(40),
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.bar_chart_outlined,
+                                        size: 48,
+                                        color: AppStyles.textSecondary(context),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'No data available',
+                                        style: AppStyles.legendText(context),
+                                      ),
+                                    ],
                                   ),
-                                  topTitles: AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                  bottomTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      reservedSize: 30,
-                                      getTitlesWidget: (value, meta) {
-                                        final index = value.toInt();
-                                        if (index >= 0 && index < _mockData.length) {
-                                          String label;
-                                          switch (_selectedPeriod) {
-                                            case '24h':
-                                              // Show every 6th hour for readability
-                                              if (index % 6 == 0) {
-                                                label = _mockData[index]['time'];
-                                              } else {
-                                                label = '';
-                                              }
-                                              break;
-                                            case '7days':
-                                              label = _mockData[index]['day'];
-                                              break;
-                                            case '30days':
-                                              // Show every other date for readability
-                                              if (index % 2 == 0) {
-                                                label = _mockData[index]['day'];
-                                              } else {
-                                                label = '';
-                                              }
-                                              break;
-                                            default:
-                                              label = '';
-                                          }
-                                          return Text(
-                                            label,
-                                            style: AppStyles.legendText(context),
-                                          );
-                                        }
-                                        return const Text('');
-                                      },
+                                );
+                              }
+
+                              return Column(
+                                children: [
+                                  SizedBox(
+                                    height: 200,
+                                    child: LineChart(
+                                      LineChartData(
+                                        gridData: FlGridData(
+                                          show: true,
+                                          drawVerticalLine: true,
+                                          getDrawingHorizontalLine: (value) {
+                                            return AppStyles.chartGridLine(context);
+                                          },
+                                          getDrawingVerticalLine: (value) {
+                                            return AppStyles.chartGridLine(context);
+                                          },
+                                        ),
+                                        titlesData: FlTitlesData(
+                                          show: true,
+                                          rightTitles: AxisTitles(
+                                            sideTitles: SideTitles(showTitles: false),
+                                          ),
+                                          topTitles: AxisTitles(
+                                            sideTitles: SideTitles(showTitles: false),
+                                          ),
+                                          bottomTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              reservedSize: 30,
+                                              getTitlesWidget: (value, meta) {
+                                                final index = value.toInt();
+                                                if (index >= 0 && index < chartData.length) {
+                                                  final dataPoint = chartData[index];
+                                                  String label;
+                                                  switch (_selectedPeriod) {
+                                                    case '24h':
+                                                      // Show every 6th hour for readability
+                                                      if (index % 6 == 0) {
+                                                        label = '${dataPoint.timestamp.hour}:00';
+                                                      } else {
+                                                        label = '';
+                                                      }
+                                                      break;
+                                                    case '7days':
+                                                      final days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                                                      label = days[dataPoint.timestamp.weekday - 1];
+                                                      break;
+                                                    case '30days':
+                                                      // Show every 5th day for readability
+                                                      if (index % 5 == 0) {
+                                                        label = '${dataPoint.timestamp.month}/${dataPoint.timestamp.day}';
+                                                      } else {
+                                                        label = '';
+                                                      }
+                                                      break;
+                                                    default:
+                                                      label = '';
+                                                  }
+                                                  return Text(
+                                                    label,
+                                                    style: AppStyles.legendText(context),
+                                                  );
+                                                }
+                                                return const Text('');
+                                              },
+                                            ),
+                                          ),
+                                          leftTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              reservedSize: 40,
+                                              getTitlesWidget: (value, meta) {
+                                                return Text(
+                                                  value.toStringAsFixed(0),
+                                                  style: AppStyles.legendText(context),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                        borderData: FlBorderData(
+                                          show: false,
+                                        ),
+                                        lineBarsData: [
+                                          // Soil Moisture Line
+                                          LineChartBarData(
+                                            spots: chartData.asMap().entries.map((entry) {
+                                              return FlSpot(entry.key.toDouble(), entry.value.avgSoilMoisture);
+                                            }).toList(),
+                                            isCurved: true,
+                                            color: AppColors.soilMoisture,
+                                            barWidth: 3,
+                                            isStrokeCapRound: true,
+                                            dotData: FlDotData(
+                                              show: false, // Hide dots for cleaner look with aggregated data
+                                            ),
+                                            belowBarData: BarAreaData(
+                                              show: false,
+                                            ),
+                                          ),
+                                          // Temperature Line
+                                          LineChartBarData(
+                                            spots: chartData.asMap().entries.map((entry) {
+                                              return FlSpot(entry.key.toDouble(), entry.value.avgTemperature);
+                                            }).toList(),
+                                            isCurved: true,
+                                            color: AppColors.temperature,
+                                            barWidth: 3,
+                                            isStrokeCapRound: true,
+                                            dotData: FlDotData(
+                                              show: false, // Hide dots for cleaner look with aggregated data
+                                            ),
+                                            belowBarData: BarAreaData(
+                                              show: false,
+                                            ),
+                                          ),
+                                        ],
+                                        lineTouchData: LineTouchData(
+                                          touchTooltipData: LineTouchTooltipData(
+                                            getTooltipItems: (touchedSpots) {
+                                              return touchedSpots.map((spot) {
+                                                final isMoisture = spot.barIndex == 0;
+                                                final dataPoint = chartData[spot.spotIndex];
+                                                final value = isMoisture
+                                                    ? dataPoint.avgSoilMoisture
+                                                    : dataPoint.avgTemperature;
+                                                final unit = isMoisture ? '%' : '°C';
+                                                final label = isMoisture ? 'Moisture' : 'Temp';
+
+                                                return LineTooltipItem(
+                                                  '$label: ${value.toStringAsFixed(1)}$unit',
+                                                  TextStyle(
+                                                    color: isMoisture ? AppColors.soilMoisture : AppColors.temperature,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                );
+                                              }).toList();
+                                            },
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  leftTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      reservedSize: 40,
-                                      getTitlesWidget: (value, meta) {
-                                        return Text(
-                                          value.toStringAsFixed(0),
-                                          style: AppStyles.legendText(context),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                                borderData: FlBorderData(
-                                  show: false,
-                                ),
-                                lineBarsData: [
-                                  // Soil Moisture Line
-                                  LineChartBarData(
-                                    spots: _mockData.asMap().entries.map((entry) {
-                                      return FlSpot(entry.key.toDouble(), entry.value['moisture']);
-                                    }).toList(),
-                                    isCurved: true,
-                                    color: AppColors.soilMoisture,
-                                    barWidth: 3,
-                                    isStrokeCapRound: true,
-                                    dotData: FlDotData(
-                                      show: true,
-                                      getDotPainter: (spot, percent, barData, index) {
-                                        return FlDotCirclePainter(
-                                          radius: 4,
-                                          color: AppColors.soilMoisture,
-                                          strokeWidth: 2,
-                                          strokeColor: Colors.white,
-                                        );
-                                      },
-                                    ),
-                                    belowBarData: BarAreaData(
-                                      show: false,
-                                    ),
-                                  ),
-                                  // Temperature Line
-                                  LineChartBarData(
-                                    spots: _mockData.asMap().entries.map((entry) {
-                                      return FlSpot(entry.key.toDouble(), entry.value['temp']);
-                                    }).toList(),
-                                    isCurved: true,
-                                    color: AppColors.temperature,
-                                    barWidth: 3,
-                                    isStrokeCapRound: true,
-                                    dotData: FlDotData(
-                                      show: true,
-                                      getDotPainter: (spot, percent, barData, index) {
-                                        return FlDotCirclePainter(
-                                          radius: 4,
-                                          color: AppColors.temperature,
-                                          strokeWidth: 2,
-                                          strokeColor: Colors.white,
-                                        );
-                                      },
-                                    ),
-                                    belowBarData: BarAreaData(
-                                      show: false,
+                                  // Legend
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 16),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        _buildLegendItem('Soil Moisture (%)', AppColors.soilMoisture),
+                                        const SizedBox(width: 24),
+                                        _buildLegendItem('Temperature (°C)', AppColors.temperature),
+                                      ],
                                     ),
                                   ),
                                 ],
-                                lineTouchData: LineTouchData(
-                                  touchTooltipData: LineTouchTooltipData(
-                                    getTooltipItems: (touchedSpots) {
-                                      return touchedSpots.map((spot) {
-                                        final isMoisture = spot.barIndex == 0;
-                                        final value = isMoisture
-                                            ? _mockData[spot.spotIndex]['moisture']
-                                            : _mockData[spot.spotIndex]['temp'];
-                                        final unit = isMoisture ? '%' : '°C';
-                                        final label = isMoisture ? 'Moisture' : 'Temp';
-
-                                        return LineTooltipItem(
-                                          '$label: ${value.toStringAsFixed(1)}$unit',
-                                          TextStyle(
-                                            color: isMoisture ? AppColors.soilMoisture : AppColors.temperature,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        );
-                                      }).toList();
-                                    },
+                              );
+                            },
+                            loading: () => Column(
+                              children: [
+                                SizedBox(
+                                  height: 200,
+                                  child: _buildChartSkeleton(context),
+                                ),
+                                // Legend skeleton
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 16),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      _buildLegendSkeleton(context),
+                                      const SizedBox(width: 24),
+                                      _buildLegendSkeleton(context),
+                                    ],
                                   ),
                                 ),
+                              ],
+                            ),
+                            error: (error, stack) => Padding(
+                              padding: const EdgeInsets.all(40),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    size: 48,
+                                    color: AppColors.error,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Failed to load chart data',
+                                    style: AppStyles.legendText(context),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    error.toString(),
+                                    style: AppStyles.legendText(context).copyWith(fontSize: 12),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                          // Legend
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _buildLegendItem('Soil Moisture (%)', AppColors.soilMoisture),
-                                const SizedBox(width: 24),
-                                _buildLegendItem('Temperature (°C)', AppColors.temperature),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                        ),
 
                     const SizedBox(height: 16),
 
@@ -440,31 +490,125 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     const SizedBox(height: 16),
 
                     // Additional insights
-                    Builder(
-                      builder: (context) {
-                        final avgMoisture = _calculateAverage('moisture');
-                        final avgTemp = _calculateAverage('temp');
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final chartDataAsync = _selectedPeriod == '24h'
+                            ? ref.watch(chartData24hProvider)
+                            : _selectedPeriod == '7days'
+                                ? ref.watch(chartData7dProvider)
+                                : ref.watch(chartData30dProvider);
 
-                        return Row(
-                          children: [
-                            Expanded(
-                              child: _buildInsightCard(
-                                context,
-                                'Avg Moisture',
-                                '${avgMoisture.toStringAsFixed(1)}%',
-                                'አማካኝ እርጥበት',
+                        return chartDataAsync.when(
+                          data: (chartData) {
+                            if (chartData.isEmpty) {
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildInsightCard(
+                                      context,
+                                      'Avg Moisture',
+                                      'N/A',
+                                      'አማካኝ እርጥበት',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildInsightCard(
+                                      context,
+                                      'Avg Temp',
+                                      'N/A',
+                                      'አማካኝ ሙቀት',
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+
+                            // Calculate averages from valid data points only
+                            final validMoistureData = chartData
+                                .map((d) => d.avgSoilMoisture)
+                                .where((value) => value > 0)
+                                .toList();
+                            final validTempData = chartData
+                                .map((d) => d.avgTemperature)
+                                .where((value) => value > 0)
+                                .toList();
+                            
+                            final avgMoisture = validMoistureData.isNotEmpty
+                                ? validMoistureData.reduce((a, b) => a + b) / validMoistureData.length
+                                : 0.0;
+                            final avgTemp = validTempData.isNotEmpty
+                                ? validTempData.reduce((a, b) => a + b) / validTempData.length
+                                : 0.0;
+
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: _buildInsightCard(
+                                    context,
+                                    'Avg Moisture',
+                                    avgMoisture > 0
+                                        ? '${avgMoisture.toStringAsFixed(1)}%'
+                                        : 'N/A',
+                                    'አማካኝ እርጥበት',
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _buildInsightCard(
+                                    context,
+                                    'Avg Temp',
+                                    avgTemp > 0
+                                        ? '${avgTemp.toStringAsFixed(1)}°C'
+                                        : 'N/A',
+                                    'አማካኝ ሙቀት',
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                          loading: () => Row(
+                            children: [
+                              Expanded(
+                                child: _buildInsightCard(
+                                  context,
+                                  'Avg Moisture',
+                                  '...',
+                                  'አማካኝ እርጥበት',
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildInsightCard(
-                                context,
-                                'Avg Temp',
-                                '${avgTemp.toStringAsFixed(1)}°C',
-                                'አማካኝ ሙቀት',
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildInsightCard(
+                                  context,
+                                  'Avg Temp',
+                                  '...',
+                                  'አማካኝ ሙቀት',
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
+                          error: (error, stack) => Row(
+                            children: [
+                              Expanded(
+                                child: _buildInsightCard(
+                                  context,
+                                  'Avg Moisture',
+                                  'N/A',
+                                  'አማካኝ እርጥበት',
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildInsightCard(
+                                  context,
+                                  'Avg Temp',
+                                  'N/A',
+                                  'አማካኝ ሙቀት',
+                                ),
+                              ),
+                            ],
+                          ),
                         );
                       },
                     ),
@@ -472,6 +616,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     const SizedBox(height: 32),
                   ],
                 ),
+                  );
+                },
               ),
             ),
 
@@ -540,6 +686,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           setState(() {
             _selectedPeriod = period;
           });
+          // Invalidate the provider to trigger a fresh fetch when tab changes
+          // The provider will be watched in the build method, so it will fetch automatically
         },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -575,14 +723,67 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     );
   }
 
-  double _calculateAverage(String field) {
-    if (_mockData.isEmpty) return 0.0;
+  Widget _buildChartSkeleton(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.3, end: 0.7),
+      duration: const Duration(milliseconds: 1500),
+      curve: Curves.easeInOut,
+      onEnd: () {
+        if (mounted) {
+          setState(() {});
+        }
+      },
+      builder: (context, opacity, child) {
+        return Opacity(
+          opacity: opacity,
+          child: CustomPaint(
+            size: const Size(double.infinity, 200),
+            painter: _ChartSkeletonPainter(
+              color: AppStyles.textSecondary(context).withOpacity(0.15),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-    double sum = 0.0;
-    for (var data in _mockData) {
-      sum += data[field] as double;
-    }
-    return sum / _mockData.length;
+  Widget _buildLegendSkeleton(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.3, end: 0.7),
+      duration: const Duration(milliseconds: 1500),
+      curve: Curves.easeInOut,
+      onEnd: () {
+        if (mounted) {
+          setState(() {});
+        }
+      },
+      builder: (context, opacity, child) {
+        return Opacity(
+          opacity: opacity,
+          child: Row(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: AppStyles.textSecondary(context).withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 80,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: AppStyles.textSecondary(context).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   String _getPeriodText(bool isAmharic) {
@@ -643,4 +844,89 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       ),
     );
   }
+}
+
+class _ChartSkeletonPainter extends CustomPainter {
+  final Color color;
+
+  _ChartSkeletonPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    // Draw grid lines (subtle)
+    for (int i = 0; i <= 4; i++) {
+      final y = size.height / 4 * i;
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width, y),
+        paint..strokeWidth = 1,
+      );
+    }
+
+    for (int i = 0; i <= 6; i++) {
+      final x = size.width / 6 * i;
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, size.height),
+        paint..strokeWidth = 1,
+      );
+    }
+
+    // Draw skeleton chart lines (curved)
+    final path1 = Path();
+    final path2 = Path();
+    
+    final points1 = [
+      Offset(0, size.height * 0.7),
+      Offset(size.width * 0.2, size.height * 0.5),
+      Offset(size.width * 0.4, size.height * 0.6),
+      Offset(size.width * 0.6, size.height * 0.4),
+      Offset(size.width * 0.8, size.height * 0.5),
+      Offset(size.width, size.height * 0.45),
+    ];
+
+    final points2 = [
+      Offset(0, size.height * 0.5),
+      Offset(size.width * 0.2, size.height * 0.4),
+      Offset(size.width * 0.4, size.height * 0.5),
+      Offset(size.width * 0.6, size.height * 0.3),
+      Offset(size.width * 0.8, size.height * 0.4),
+      Offset(size.width, size.height * 0.35),
+    ];
+
+    // Draw first line (smooth curve)
+    path1.moveTo(points1[0].dx, points1[0].dy);
+    for (int i = 1; i < points1.length; i++) {
+      final prev = points1[i - 1];
+      final curr = points1[i];
+      final controlPoint = Offset(
+        (prev.dx + curr.dx) / 2,
+        (prev.dy + curr.dy) / 2,
+      );
+      path1.quadraticBezierTo(controlPoint.dx, controlPoint.dy, curr.dx, curr.dy);
+    }
+
+    // Draw second line (smooth curve)
+    path2.moveTo(points2[0].dx, points2[0].dy);
+    for (int i = 1; i < points2.length; i++) {
+      final prev = points2[i - 1];
+      final curr = points2[i];
+      final controlPoint = Offset(
+        (prev.dx + curr.dx) / 2,
+        (prev.dy + curr.dy) / 2,
+      );
+      path2.quadraticBezierTo(controlPoint.dx, controlPoint.dy, curr.dx, curr.dy);
+    }
+
+    canvas.drawPath(path1, paint..strokeWidth = 2.5);
+    canvas.drawPath(path2, paint..strokeWidth = 2.5);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

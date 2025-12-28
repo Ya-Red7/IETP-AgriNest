@@ -26,7 +26,6 @@ dependencies:
   fl_chart: ^0.68.0
   
   # HTTP & API
-  http: ^1.2.1
   dio: ^5.4.0
   
   # Local Storage
@@ -39,12 +38,11 @@ dependencies:
   firebase_auth: ^5.2.0
   
   # UI Components & Animations
-  loading_animation_widget: ^1.2.1
-  lottie: ^3.1.0
+  # Removed unused packages: loading_animation_widget, lottie
   
   # Icons & Fonts
   ionicons: ^0.2.2
-  google_fonts: ^6.1.0
+  # Removed google_fonts - using system fonts instead to reduce APK size
   
   # Utilities
   uuid: ^4.2.1
@@ -52,6 +50,7 @@ dependencies:
   url_launcher: ^6.2.2
   share_plus: ^8.0.2
   csv: ^6.0.0
+  flutter_dotenv: ^5.1.0
   
   # Device & Permissions
   permission_handler: ^11.3.0
@@ -62,6 +61,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
   
   # Riverpod code generation
   riverpod_generator: ^2.4.0
@@ -71,12 +71,11 @@ dev_dependencies:
   hive_generator: ^2.0.1
 
 flutter:
-  uses-material-design: true
+  uses-material-design: false
   
-  # Assets - Commented out until we have actual assets
-  # assets:
-  #   - assets/images/
-  #   - assets/lottie/
+  # Assets
+  assets:
+    - assets/.env
     
   # Fonts - Commented out until we have font files
   # fonts:
@@ -87,3 +86,7 @@ flutter:
   #         weight: 500
   #       - asset: fonts/Inter-Bold.ttf
   #         weight: 700
+flutter_icons:
+  android: true
+  ios: true
+  image_path: assets/icon/app_icon.png
