@@ -823,7 +823,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 return sensorDataAsync.when(
                                   data: (sensorData) {
                                     // Use pump status from API (defaults to false if null)
-                                    final pumpStatus = sensorData?.pumpStatus ?? false;
+                                    final bool ispumpon = sensorData?.pumpStatus ?? false;
                                     
                                     return TweenAnimationBuilder<double>(
                                       tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -836,7 +836,7 @@ class _HomeScreenState extends State<HomeScreen>
                                             opacity: value,
                                             child: PumpStatusCard(
                                               label: 'Pump Status',
-                                              isOn: pumpStatus,
+                                              isOn: ispumpon,
                                               icon: Icons.power_settings_new,
                                             ),
                                           ),
